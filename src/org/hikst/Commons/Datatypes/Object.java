@@ -64,7 +64,7 @@ public class Object
 //		return impact_degree_ID;
 //	}
 
-	public int getUsage_pattern_ID() {
+	public Integer getUsage_pattern_ID() {
 		return usage_pattern_ID;
 	}
 	

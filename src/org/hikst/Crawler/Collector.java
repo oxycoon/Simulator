@@ -5,15 +5,20 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.sql.Connection;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.hikst.Commons.Datatypes.WeatherData;
 import org.hikst.Commons.Exceptions.CollectorRequestNotFoundException;
 import org.hikst.Commons.Exceptions.StatusIdNotFoundException;
+import org.hikst.Commons.Exceptions.TypeIdNotFoundException;
 import org.hikst.Commons.Services.AliveMessenger;
 import org.hikst.Commons.Services.Settings;
 import org.hikst.Commons.Statics.Status;
@@ -31,6 +36,8 @@ public class Collector extends KeyAdapter {
 	
 	private boolean active = true;
 	
+	private WeatherData weatherData;
+	
 	public Collector()
 	{
 		Runtime runTime = Runtime.getRuntime();
@@ -40,7 +47,9 @@ public class Collector extends KeyAdapter {
 		System.out.println("Starting collector-thread...");
 		//new Thread(new Collecting()).start();
 		
-		WeatherParser.getWeatherData("Norway", "Nordland", "Narvik", "Narvik");
+		weatherData = WeatherParser.getWeatherData("Norway", "Nordland", "Narvik", "Narvik");
+		
+		saveData(weatherData);
 	}
 	
 	private void sleep()
@@ -122,6 +131,41 @@ public class Collector extends KeyAdapter {
 		{
 			System.out.println("The workload is low, will process new tasks");
 
+		}
+	}
+	
+	private void saveData(WeatherData wd)
+	{
+		Connection connection = Settings.getDBC();
+		
+		try{
+			int type_id = org.hikst.Commons.Statics.Type.getInstance().getTypeID("Temperature");
+			
+			
+			String querry = "Insert into impact_factor(type_id, content, longitude, latitude, time_from, time_to) values(?,?,?,?,?,?);";
+			PreparedStatement statement = connection.prepareStatement(querry);
+			statement.setInt(1, type_id);
+			statement.setString(2, wd.toJSONObject().toString());
+			statement.setDouble(3, wd.getLongitude() * Math.pow(10, 6));
+			statement.setDouble(4, wd.getLatitude()* Math.pow(10, 6));
+			
+			Calendar cal = GregorianCalendar.getInstance();
+			cal.set(wd.getLastUpdate().getYear(), wd.getLastUpdate().getMonth(), wd.getLastUpdate().getDate(),
+					wd.getLastUpdate().getHours(), wd.getLastUpdate().getMinutes(), wd.getLastUpdate().getSeconds());
+			statement.setLong(5, cal.getTimeInMillis()/1000);
+			
+			cal.set(wd.getNextUpdate().getYear(), wd.getNextUpdate().getMonth(), wd.getNextUpdate().getDate(),
+					wd.getNextUpdate().getHours(), wd.getNextUpdate().getMinutes(), wd.getNextUpdate().getSeconds());
+			statement.setLong(6, cal.getTimeInMillis()/1000);
+			statement.executeUpdate();
+			
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
+		} 
+		catch (TypeIdNotFoundException e) {
+			e.printStackTrace();
 		}
 	}
 	

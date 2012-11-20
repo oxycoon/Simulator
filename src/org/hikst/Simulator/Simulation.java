@@ -52,7 +52,7 @@ public class Simulation implements Runnable {
 			this.description = new SimulationDescription(request.getSimulationDescriptionsID());
 			this.simulationDependency = new SimulationDependency(request.getID());
 			this.crawlerDependency = new CrawlerDependency(request.getID());
-			getImpactFactors(request.getSimulationDescriptionsID());
+			//getImpactFactors(request.getSimulationDescriptionsID());
 		} 
 		catch (ObjectNotFoundException ex) 
 		{
@@ -206,16 +206,6 @@ public class Simulation implements Runnable {
 			// }
 			//
 
-//			try 
-//			{
-//				//usagePattern = getUsagePattern(simulatorObject.getID());
-//			} 
-//			catch (UsagePatternNotFoundException ex) 
-//			{
-//				System.out.println("Usage pattern for object with ID=\"" + simulatorObject.getID() + "\" could not be determined");
-//				ex.printStackTrace();
-//			}
-
 			while (time.before(endTime)) 
 			{
 //				int probability = usagePattern.getUsage(time);
@@ -254,7 +244,8 @@ public class Simulation implements Runnable {
 
 	public double calculateEffect(Object object, Date time) 
 	{
-		Double theEffect = 0.0;
+		Double theEffect = 0.0;	
+		
 		System.out.println("theEffect of " + object.getName() + ": " + theEffect.toString());
 		if (object.hasSons()) 
 		{
@@ -264,7 +255,7 @@ public class Simulation implements Runnable {
 			}
 		}
 		System.out.println("After sons effect: " + theEffect.toString());
-		
+
 		Factor tempFactor = null;
 		ImpactDegrees tempDegree = null;
 		Double tempEffect = object.getEffect();
@@ -274,56 +265,68 @@ public class Simulation implements Runnable {
 		double tempLoopEffect = 0.0;
 
 		// TODO: XP på hvordan dette skal gjøres.
-		for (Factor f : theFactors) 
+		if (theFactors.size() > 0)
 		{
-			try 
+			for (Factor f : theFactors) 
 			{
-				if (f.getTypeId() == Type.getInstance().getTypeID("IMPACT_SUN")) 
+				try 
 				{
-					tempFactor = f;
-					for (ImpactDegrees imd: object.getImpactDegrees())
+					if (f.getTypeId() == Type.getInstance().getTypeID("SUN")) 
 					{
-						if (imd.getType() == f.getTypeId())
+						tempFactor = f;
+						for (ImpactDegrees imd: object.getImpactDegrees())
 						{
-							tempDegree = imd;
-							
-							System.out.println("Sunfactor");
-							
-							if (object.getUsagePattern() != null)
-								tempLoopEffect = object.getEffect()  *  (object.getUsagePattern().getUsage(time)/100);
-							break;
+							if (imd.getType() == f.getTypeId())
+							{
+								tempDegree = imd;
+								
+								System.out.println("Sunfactor");
+								
+								if (object.getUsagePattern() != null)
+									tempLoopEffect = object.getEffect()  *  (object.getUsagePattern().getUsage(time)/100);
+								break;
+							}
+						}
+					} 
+					//TODO: Fix temperature calculation!!!!!!!!!!!!
+					else if (f.getTypeId() == Type.getInstance().getTypeID("Temperature")) 
+					{
+						for (ImpactDegrees imd: object.getImpactDegrees())
+						{
+							if (imd.getType() == f.getTypeId())
+							{
+								System.out.println("Temperature");
+								
+								tempLoopEffect = object.getHeatLossRate() * object.getBaseArea() *
+								ImpactFactor.setTemperatureDegreeDays(object.getTargetTemperature(), 
+																	f.getTemperatureMin(), f.getTemperatureMax(), 
+																	(object.getTargetTemperature() < f.getTemperatureMax()));
+								break;
+	
+							}
 						}
 					}
 				} 
-				//TODO: Fix temperature calculation!!!!!!!!!!!!
-				else if (f.getTypeId() == Type.getInstance().getTypeID("IMPACT_TEMPERATURE")) 
+				catch (TypeIdNotFoundException e) 
 				{
-					for (ImpactDegrees imd: object.getImpactDegrees())
-					{
-						if (imd.getType() == f.getTypeId())
-						{
-							System.out.println("Temperature");
-							
-							tempLoopEffect = object.getHeatLossRate() * object.getBaseArea() *
-							ImpactFactor.setTemperatureDegreeDays(object.getTargetTemperature(), 
-																f.getTemperatureMin(), f.getTemperatureMax(), 
-																(object.getTargetTemperature() < f.getTemperatureMax()));
-							break;
-
-						}
-					}
+					e.printStackTrace();
 				}
-			} 
-			catch (TypeIdNotFoundException e) 
-			{
-				e.printStackTrace();
+				System.out.println("tempLoopEffect: " + tempLoopEffect);
+				
+				if (object.getUsagePattern() != null)
+					tempLoopEffect *= object.getUsagePattern().getUsage(time) / 100;
+				
+				tempEffect += tempLoopEffect;
+				tempLoopEffect = 0.0;
+				tempDegree = null;
+				tempFactor = null;
 			}
-			System.out.println("tempLoopEffect: " + tempLoopEffect);
-			tempEffect += tempLoopEffect;
-			tempLoopEffect = 0.0;
-			tempDegree = null;
-			tempFactor = null;
 		}
+		else if (object.getUsagePattern() != null)
+		{
+			tempEffect *= object.getUsagePattern().getUsage(time) / 100;
+		}
+		
 		System.out.println("tempEffect: " + tempEffect.toString());
 		
 		if (tempEffect != null)
@@ -334,20 +337,6 @@ public class Simulation implements Runnable {
 
 		}
 
-		// if (object.getBaseArea() > 0 && object.getTargetTemperature() > )
-		// {
-		// System.out.println("BEFORE CHECKING FACTORS, DEBUGGING!");
-		// for (Factor temp : factors)
-		// {
-		// tempHDD = temp.getTemperatureDD();
-		//
-		// System.out.println("CHECKING FACTORS, DEBUGGING!");
-		//
-		// }
-		// effect = (base_area * heat_loss_rate *
-		// tempHDD)/(hourlengthmillisecs/intervall);
-		// System.out.println("Inside if effect: " + effect);
-		// }
 		System.out.println("Output effect " + object.getName() + ": " + theEffect.toString());
 		
 		return theEffect;
@@ -434,60 +423,60 @@ public class Simulation implements Runnable {
 //			return false;
 //		}
 //	}
-
-	private int getParentID(int object_id) 
-	{
-		try 
-		{
-			Connection connection = Settings.getDBC();
-
-			String query = "SELECT Father_ID from PartObjects WHERE Son_ID=?";
-			PreparedStatement statement = connection.prepareStatement(query);
-			statement.setInt(1, object_id);
-			ResultSet set = statement.executeQuery();
-
-			if (set.next()) 
-			{
-				return set.getInt(1);
-			} 
-			else 
-			{
-				return Integer.MAX_VALUE;
-			}
-		} 
-		catch (SQLException ex) 
-		{
-			ex.printStackTrace();
-			return Integer.MAX_VALUE;
-		}
-	}
-
-	private int getUsagePatternID(int object_id) 
-	{
-		try 
-		{
-			Connection connection = Settings.getDBC();
-
-			String query = "SELECT Usage_Pattern_ID FROM Objects WHERE ID=?";
-			PreparedStatement statement = connection.prepareStatement(query);
-			statement.setInt(1, object_id);
-			ResultSet set = statement.executeQuery();
-
-			if (set.next()) 
-			{
-				return set.getInt(1);
-			} 
-			else 
-			{
-				return Integer.MAX_VALUE;
-			}
-		} 
-		catch (SQLException ex) 
-		{
-			ex.printStackTrace();
-			return Integer.MAX_VALUE;
-		}
-	}
+//
+//	private int getParentID(int object_id) 
+//	{
+//		try 
+//		{
+//			Connection connection = Settings.getDBC();
+//
+//			String query = "SELECT Father_ID from PartObjects WHERE Son_ID=?";
+//			PreparedStatement statement = connection.prepareStatement(query);
+//			statement.setInt(1, object_id);
+//			ResultSet set = statement.executeQuery();
+//
+//			if (set.next()) 
+//			{
+//				return set.getInt(1);
+//			} 
+//			else 
+//			{
+//				return Integer.MAX_VALUE;
+//			}
+//		} 
+//		catch (SQLException ex) 
+//		{
+//			ex.printStackTrace();
+//			return Integer.MAX_VALUE;
+//		}
+//	}
+//
+//	private int getUsagePatternID(int object_id) 
+//	{
+//		try 
+//		{
+//			Connection connection = Settings.getDBC();
+//
+//			String query = "SELECT Usage_Pattern_ID FROM Objects WHERE ID=?";
+//			PreparedStatement statement = connection.prepareStatement(query);
+//			statement.setInt(1, object_id);
+//			ResultSet set = statement.executeQuery();
+//
+//			if (set.next()) 
+//			{
+//				return set.getInt(1);
+//			} 
+//			else 
+//			{
+//				return Integer.MAX_VALUE;
+//			}
+//		} 
+//		catch (SQLException ex) 
+//		{
+//			ex.printStackTrace();
+//			return Integer.MAX_VALUE;
+//		}
+//	}
 
 	private boolean checkCrawlerDependencies() 
 	{
@@ -617,23 +606,23 @@ public class Simulation implements Runnable {
 		}
 	}
 
-	//TODO: Trenger vi denne?
-	private void getImpactFactors(int id) 
-	{
-		Connection connection = Settings.getDBC();
-
-		String query = "select Impact_Factor_ID from Impact_Factors_In_Simulation where Sim_Description_ID=?";
-		PreparedStatement statement;
-		try 
-		{
-			statement = connection.prepareStatement(query);
-			statement.setInt(1, id);
-			statement.executeQuery();
-		} 
-		catch (SQLException e) 
-		{
-			e.printStackTrace();
-		}
-
-	}
+//	//TODO: Trenger vi denne?
+//	private void getImpactFactors(int id) 
+//	{
+//		Connection connection = Settings.getDBC();
+//
+//		String query = "select Impact_Factor_ID from Impact_Factors_In_Simulation where Sim_Description_ID=?";
+//		PreparedStatement statement;
+//		try 
+//		{
+//			statement = connection.prepareStatement(query);
+//			statement.setInt(1, id);
+//			statement.executeQuery();
+//		} 
+//		catch (SQLException e) 
+//		{
+//			e.printStackTrace();
+//		}
+//
+//	}
 }

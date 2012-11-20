@@ -25,10 +25,10 @@ public class ImpactFactor
 	public static final int IMPACT_WEATHER = 1;
 	public static final int IMPACT_BUILDING = 3;
 	
-	public static final String IMPACT_SUN_STRING = "IMPACT_SUN";
-	public static final String IMPACT_TEMPERATURE_STRING = "IMPACT_TEMPERATURE";
-	public static final String IMPACT_WEATHER_STRING = "IMPACT_WEATHER";
-	public static final String IMPACT_BUILDING_STRING = "IMPACT_BUILDING";
+	public static final String IMPACT_SUN_STRING = "Sun";
+	public static final String IMPACT_TEMPERATURE_STRING = "Temperature";
+	public static final String IMPACT_WEATHER_STRING = "Weather";
+	public static final String IMPACT_BUILDING_STRING = "Building";
 	
 	public static final double temperatureBaseResidential = 18.0;
 	public static final double temperatureBaseOffice = 15.0;
